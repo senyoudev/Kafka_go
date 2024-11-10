@@ -1,0 +1,6 @@
+package errors
+
+
+var (
+	UNSUPPORTED_VERSION = NewAPIError(35, "UNSUPPORTED API VERSION")
+)

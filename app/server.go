@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+
+	"github.com/codecrafters-io/kafka-starter-go/errors"
 )
 
 
@@ -36,7 +38,19 @@ func handleRequest(conn net.Conn) {
 		return
 	}
 
-	response := make([]byte, 8)
+	// Read the api version
+    api_version := binary.BigEndian.Uint16(buff[6:8])
+	response := make([]byte, 10)
+	
+	if api_version <= 4 {
+    	fmt.Println("Api version is within the range 0 to 4:", api_version)
+	} else {
+		fmt.Println(errors.UNSUPPORTED_VERSION.Message())
+		errorBytes := errors.ErrorCodeToBytes(errors.UNSUPPORTED_VERSION)
+		copy(response[8:], errorBytes)
+	}
+	
+
 	binary.BigEndian.PutUint32(response[:4], 0)
 	// Extract correlation_id (4 bytes starting from the 9th byte)
 	correlationID := binary.BigEndian.Uint32(buff[8:12])

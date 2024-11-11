@@ -11,7 +11,7 @@ import (
 )
 
 func HandleRequest(conn net.Conn) {
-	defer conn.Close()
+	//defer conn.Close()
 
 	// Send small packets to detect if the other part is still reachable
 	if tcpConn, ok := conn.(*net.TCPConn); ok {

@@ -7,6 +7,28 @@ import (
 	"github.com/codecrafters-io/kafka-starter-go/errors"
 )
 
+type APIKey struct {
+    Key         uint16
+    MinVersion  uint16
+    MaxVersion  uint16
+    TaggedField byte
+}
+
+var apiKeys = []APIKey{
+    {
+        Key:         18, // APIVersions
+        MinVersion:  0,
+        MaxVersion:  4,
+		TaggedField: 0,
+    },
+    {
+        Key:         75, // DescribeTopicPartitions
+        MinVersion:  0,
+        MaxVersion:  0,
+		TaggedField: 0,
+    },
+}
+
 // https://forum.codecrafters.io/t/question-about-handle-apiversions-requests-stage/1743/4
 //
 // ApiVersions Response (Version: CodeCrafters) =>
@@ -21,20 +43,39 @@ import (
 // throttle_time_ms => INT32
 // _tagged_fields
 func CreateAPIVersionsResponse(correlationID uint32) []byte {
-	response := make([]byte, 19)
+	totalSize := 4 + // Correlation ID
+			2 + // Error Code
+			1 + // Number of API Keys
+			(len(apiKeys) * 7) + // Each API Key entry (2+2+2+1 bytes)
+			4 + // Throttle time
+			1   // Final tagged fields
+	response := make([]byte, totalSize)
+	offset := 0
 	
-	binary.BigEndian.PutUint32(response[0:4], correlationID)
-	binary.BigEndian.PutUint16(response[4:6], 0)
+	// CorrelationId
+	binary.BigEndian.PutUint32(response[offset:], correlationID)
+	offset += 4
+	// error code(no code = 0)
+	binary.BigEndian.PutUint16(response[offset:], 0)
+	offset += 2
 	
-	response[6] = 2
+	response[offset] = byte(len(apiKeys) + 1)
+	offset++
+
+	for _, api := range apiKeys {
+        binary.BigEndian.PutUint16(response[offset:], api.Key)
+        offset += 2
+        binary.BigEndian.PutUint16(response[offset:], api.MinVersion)
+        offset += 2
+        binary.BigEndian.PutUint16(response[offset:], api.MaxVersion)
+        offset += 2
+		response[offset] = api.TaggedField
+		offset++
+    }
 	
-	binary.BigEndian.PutUint16(response[7:9], 18)
-	binary.BigEndian.PutUint16(response[9:11], 0)
-	binary.BigEndian.PutUint16(response[11:13], 4)
-	
-	response[13] = 0
-	binary.BigEndian.PutUint32(response[14:18], 0)
-	response[18] = 0
+	binary.BigEndian.PutUint32(response[offset:], 0) // throttle time
+	offset += 4
+	response[offset] = 0 // final tagged fields
 	
 	return response
 }

@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	"net"
-
 	"github.com/codecrafters-io/kafka-starter-go/handler"
 )
 
@@ -12,7 +11,6 @@ func StartServer() error {
 	if err != nil {
 		return fmt.Errorf("failed to bind to port 9092: %v", err)
 	}
-	defer l.Close()
 
 	for {
 		conn, err := l.Accept()

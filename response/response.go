@@ -29,19 +29,84 @@ var apiKeys = []APIKey{
     },
 }
 
+func CreateDescribeTopicPartitionsResponse(correlationId uint32, topicName string) []byte {
+    totalSize := 4 + // correlation ID
+                  1 + // first tag buffer
+                  4 + // throttle time
+                  1 + // array length (varint)
+                  2 + // error code
+                  2 + len(topicName) + // topic name length + content
+                  16 + // topic ID (UUID)
+                  1 + // is internal
+                  1 + // partitions array length
+                  4 + // topic authorized operations
+                  1 + // topic tag buffer
+                  1 + // next cursor (nullable)
+                  1   // final tag buffer
+	
+	response := make([]byte, totalSize)
+	offset := 0
+
+	// Write correlationId
+	binary.BigEndian.PutUint32(response[offset:], correlationId)
+    offset += 4
+
+	// First tag buffer (empty)
+    response[offset] = 0x00
+    offset++
+
+    // Throttle time (0)
+    binary.BigEndian.PutUint32(response[offset:], 0)
+    offset += 4
+
+	// Array length (length + 1 as varint)
+    response[offset] = 0x02 // Array length of 1 encoded as varint
+    offset++
+
+    // Error code (UNKNOWN_TOPIC = 3)
+    binary.BigEndian.PutUint16(response[offset:], errors.UNKNOWN_TOPIC_OR_PARTITION.Code())
+    offset += 2
+
+	topicLength := len(topicName) + 1
+    response[offset] = byte(topicLength)
+    offset++
+
+    // Topic name content
+    copy(response[offset:], topicName)
+    offset += len(topicName)
+
+    // Topic ID (16 zero bytes)
+    zeroUUID := make([]byte, 16)
+    copy(response[offset:], zeroUUID)
+    offset += 16
+
+    // Is Internal (false)
+    response[offset] = 0x00
+    offset++
+
+	// Partitions array (empty)
+    response[offset] = 0x01 // Empty array encoded as varint
+    offset++
+
+    // Topic authorized operations
+    binary.BigEndian.PutUint32(response[offset:], 0x00000df8)
+    offset += 4
+
+	    // Topic tag buffer
+    response[offset] = 0x00
+    offset++
+
+    // Next cursor (null)
+    response[offset] = 0xff
+    offset++
+
+    // Final tag buffer
+    response[offset] = 0x00
+
+    return response
+}
+
 // https://forum.codecrafters.io/t/question-about-handle-apiversions-requests-stage/1743/4
-//
-// ApiVersions Response (Version: CodeCrafters) =>
-//	error_code num_of_api_keys [api_keys] throttle_time_ms TAG_BUFFER
-// error_code => INT16
-// num_of_api_keys => INT8
-// api_keys => api_key min_version max_version
-//   api_key => INT16
-// 	 min_version => INT16
-//   max_version => INT16
-// _tagged_fields
-// throttle_time_ms => INT32
-// _tagged_fields
 func CreateAPIVersionsResponse(correlationID uint32) []byte {
 	totalSize := 4 + // Correlation ID
 			2 + // Error Code

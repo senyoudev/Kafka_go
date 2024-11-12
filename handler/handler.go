@@ -38,14 +38,32 @@ func HandleRequest(conn net.Conn) {
 		}
 
 		switch req.APIKey {
-		case protocol.APIVersionsKey:
-			handleAPIVersions(conn, req)
-		default:
-			response.SendErrorResponse(conn, req.CorrelationID, nil)
+			case protocol.APIVersionsKey:
+				handleAPIVersions(conn, req)
+			case protocol.DescribeTopicPartitionsKey:
+				handleDescribeTopicPartitionsRequest(conn, buff)
+			default:
+				response.SendErrorResponse(conn, req.CorrelationID, nil)
 		}
 	}
+}
 
-
+func handleDescribeTopicPartitionsRequest(conn net.Conn, buff []byte) {
+    // Parse the full request
+    parsedReq := protocol.ParseDescribeTopicPartitionsRequest(buff)
+    
+    // For each topic in the request, create a response
+    // For now, we treat all topics as unknown
+    for _, topicName := range parsedReq.Topics {
+		fmt.Println("correlationId", parsedReq.CorrelationID)
+		fmt.Println("topicName", topicName)
+	
+        resp := response.CreateDescribeTopicPartitionsResponse(
+            parsedReq.CorrelationID,
+            topicName,
+        )
+        response.SendResponse(conn, resp)
+    }
 }
 
 func handleAPIVersions(conn net.Conn, req protocol.Request) {
